@@ -1,37 +1,40 @@
 package main
 
 import (
-	"fmt"
 	"sync"
 )
 
-func main() {
-	numberOfWorkers := 2
-	numberOfJobs := 5
-	jobs := make(chan int, numberOfJobs)
-	results := make(chan int, numberOfJobs)
-	var wg sync.WaitGroup
-	for i := 0; i < numberOfWorkers; i++ {
-		wg.Add(1)
-		i := i
-		go worker(i, jobs, results, &wg)
-
-	}
-	for i := 0; i < numberOfJobs; i++ {
-		jobs <- i
-	}
-	close(jobs)
-	for a := 0; a < numberOfJobs; a++ {
-		<-results
-	}
-
-	wg.Wait()
-}
-
-func worker(id int, jobs <-chan int, results chan<- int, wg *sync.WaitGroup) {
+func worker(WID int, jobs <-chan int, result chan<- int, wg *sync.WaitGroup) {
 	defer wg.Done()
 	for j := range jobs {
-		results <- j * 2
-		fmt.Println("worker", id, "processed job", j)
+		println("worker", WID, "started  job", j)
+		result <- j * 2
 	}
+}
+
+func main() {
+	numberOfWorkers := 3
+	jobs := make(chan int, 5)
+	results := make(chan int, 5)
+	var workersWG sync.WaitGroup
+
+	// Запускаем воркеров
+	for w := 1; w <= numberOfWorkers; w++ {
+		workersWG.Add(1)
+		go worker(w, jobs, results, &workersWG)
+	}
+
+	go func() {
+		for j := 1; j <= 100; j++ {
+			jobs <- j
+		}
+		close(jobs)
+	}()
+	for a := 1; a <= 100; a++ {
+		result := <-results
+		println("result", result)
+	}
+
+	workersWG.Wait()
+
 }
